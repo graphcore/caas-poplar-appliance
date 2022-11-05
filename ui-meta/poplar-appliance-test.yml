@@ -22,7 +22,7 @@ parameters:
     label: "Number of IPUs in allocation (<=64)"
     description: |-
       The number of IPUs to be added to allocation.
-    kind: integer
+    kind: choice
     default: 4
     options:
       choices:
