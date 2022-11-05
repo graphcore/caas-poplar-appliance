@@ -2,7 +2,7 @@
 
 name: "poplar-appliance"
 label: "Graphcore Poplar Appliance TEST"
-description: Poplar host accessible via a web browser and by LDAP SSH.
+description: TEST Poplar host accessible via a web browser and by LDAP SSH.
 logo: https://raw.githubusercontent.com/graphcore/caas-poplar-appliance/main/assets/graphcore.png
 
 parameters:
