@@ -62,6 +62,10 @@
       ansible.builtin.set_fact:
         terraform_state: "{{ cluster_state | default('present') }}"
 
+    - name: Check environment
+      ansible.builtin.debug:
+        msg: "Importing vars from {{playbook_dir}}/group_vars/{{gc_cloud}}.yaml and {{playbook_dir}}/group_vars/ipums.yaml"
+
     - name: Include the vars we need
       ansible.builtin.include_vars:
         file: "{{ item }}"
