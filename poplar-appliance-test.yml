@@ -90,7 +90,9 @@
     - name: Set uid fact for use in cluster_infra
       ansible.builtin.set_fact:
         appliance_user_ldap_uid: "{{ ldap_out.results[0].uidNumber | int }}"
-      when: ldap_out is defined
+      when: 
+        - ldap_out is defined
+        - ldap_out.results is defined
 
 
 - name: Build the appliance
