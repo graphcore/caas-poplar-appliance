@@ -69,10 +69,6 @@
         - "{{playbook_dir}}/group_vars/{{gc_cloud}}.yaml"
         - "{{playbook_dir}}/group_vars/ipums.yaml"
 
-
-- name: Build the appliance
-  hosts: openstack
-  tasks:
     - name: Get ldap uid for appliance user
       community.general.ldap_search:
         bind_dn: "{{ ldap_binddn }}"
@@ -85,11 +81,21 @@
         server_uri: "{{ldap_uri}}"
       register: ldap_out
       delegate_to: localhost
+      when:
+        - ldap_auth_token is defined
+        - ldap_binddn is defined
+        - ldap_base is defined
+        - ldap_uri is defined
 
     - name: Set uid fact for use in cluster_infra
       ansible.builtin.set_fact:
         appliance_user_ldap_uid: "{{ ldap_out.results[0].uidNumber | int }}"
+      when: ldap_out is defined
 
+
+- name: Build the appliance
+  hosts: openstack
+  tasks:
     - name: Build the appliance when terraform_state is present
       block:
           # This creation can fail because:
