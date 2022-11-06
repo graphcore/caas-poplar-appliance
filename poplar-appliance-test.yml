@@ -69,6 +69,10 @@
         - "{{playbook_dir}}/group_vars/{{gc_cloud}}.yaml"
         - "{{playbook_dir}}/group_vars/ipums.yaml"
 
+
+- name: Build the appliance
+  hosts: openstack
+  tasks:
     - name: Get ldap uid for appliance user
       community.general.ldap_search:
         bind_dn: "{{ ldap_binddn }}"
@@ -86,9 +90,6 @@
       ansible.builtin.set_fact:
         appliance_user_ldap_uid: "{{ ldap_out.results[0].uidNumber | int }}"
 
-- name: Build the appliance
-  hosts: openstack
-  tasks:
     - name: Build the appliance when terraform_state is present
       block:
           # This creation can fail because:
