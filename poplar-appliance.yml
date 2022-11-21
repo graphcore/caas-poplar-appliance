@@ -1,6 +1,4 @@
 # Modified and renamed by Graphcore Ltd.
----
-
 - name: Create or destroy appliance
   hosts: openstack
   vars:
@@ -14,9 +12,10 @@
   tasks:
     - name: Include the roles needed
       ansible.builtin.include_role:
-        name: "{{ item }}"
+        name: "{{ role_var }}"
       loop: "{{ execution_order | select | list }}"
-
+      loop_control:
+        loop_var: role_var
 # Write the outputs as the final task
 - hosts: localhost
   tasks:

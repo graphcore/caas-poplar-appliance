@@ -1,32 +1,25 @@
----
 # Goonies never say die
 #
-
 - name: Make Terraform project directory
   file:
     path: "{{ terraform_project_path }}"
     state: directory
-
 - ansible.builtin.debug:
     var: hostvars[inventory_hostname]
-  tags: [ never, debug ]
-
+  tags: [never, debug]
 - name: Write out our IPUM set
   ansible.builtin.copy:
     content: "{{ hostvars[inventory_hostname][gc_cloud] }}"
     dest: "{{ terraform_project_path }}/ipums.yml"
-
 - name: Get ipum file for debug
   ansible.builtin.slurp:
     src: "{{ terraform_project_path }}/ipums.yml"
   register: slurpfile
-  tags: [ never, debug ]
-
+  tags: [never, debug]
 - name: Debug ipum file
   ansible.builtin.debug:
     msg: "{{ slurpfile['content'] | b64decode }}"
-  tags: [ never, debug ]
-
+  tags: [never, debug]
 - name: Write backend configuration
   copy:
     content: |
@@ -34,36 +27,32 @@
         backend "{{ terraform_backend_type }}" { }
       }
     dest: "{{ terraform_project_path }}/backend.tf"
-
 - name: Template Terraform files into project directory
   template:
-    src: "{{ item }}.j2"
-    dest: "{{ terraform_project_path }}/{{ item }}"
+    src: "{{ tf_var }}.j2"
+    dest: "{{ terraform_project_path }}/{{ tf_var }}"
   loop:
     - outputs.tf
     - providers.tf
     - resources.tf
-
+  loop_control:
+    loop_var: tf_var
 - name: Make ssh directory
   ansible.builtin.file:
     path: ~/.ssh
     state: directory
-
 - name: Get GitLab hostkeys
   ansible.builtin.shell:
     cmd: ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
-
 - name: Get clouds.yaml file for debug
   ansible.builtin.slurp:
     src: "/etc/openstack/clouds.yaml"
   register: slurpfile2
-  tags: [ debug, never ]
-
+  tags: [debug, never]
 - name: Debug clouds.yaml file
   ansible.builtin.debug:
     msg: "{{ slurpfile2['content'] | b64decode }}"
-  tags: [ debug, never ]
-
+  tags: [debug, never]
 ##
 # Terraform the items:
 #   - Creates dedicated user RNIC network
@@ -81,7 +70,6 @@
   environment:
     OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
   register: terraform_provision
-
 - name: Populate facts from Terraform outputs
   set_fact:
     user_rnic_net_id: "{{ terraform_provision.outputs.user_rnic_net_id.value }}"

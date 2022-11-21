@@ -1,50 +1,41 @@
----
 - name: Log appliance name
   ansible.builtin.debug:
     msg: "Building appliance {{cluster_name}}"
-
 - name: Get openstack user name
   ansible.builtin.shell:
     cmd: openstack user show "$(openstack token issue -f value -c user_id)" -f value -c name
   register: openstack_cli_user
-
 - name: Set user name
   ansible.builtin.set_fact:
     appliance_user: "{{ (openstack_cli_user.stdout | split('@') | first) if '@' in openstack_cli_user.stdout else openstack_cli_user.stdout }}"
-
 - name: Get user's openstack project ID
   ansible.builtin.shell:
     cmd: openstack token issue -f value -c project_id
   register: openstack_cli_proj
-
 - name: Set user project ID fact
   ansible.builtin.set_fact:
     appliance_project: "{{ openstack_cli_proj.stdout | default( 'ipuops') }}"
-
 - name: Get tenancy name
   ansible.builtin.shell:
     cmd: openstack project show "$(openstack token issue -f value -c project_id)" -f value -c name
   register: openstack_cli_tenancy_name
-
 - name: Set user tenancy name fact
   ansible.builtin.set_fact:
     appliance_tenancy: "{{ openstack_cli_tenancy_name.stdout | default( 'ipuops') }}"
-
 - name: Set allocation name
   ansible.builtin.set_fact:
     allocation_name: "{{appliance_user}}-{{cluster_name}}"
-
 - name: Generate partition name
   ansible.builtin.set_fact:
     user_partition: "{{ ('Single reconfigurable partition' in partition_choice) | ternary(allocation_name ~ '-reconfig', 'N/A')  }}"
-
 - name: Define the terraform state
   ansible.builtin.set_fact:
     terraform_state: "{{ cluster_state | default('present') }}"
-
 - name: Include the vars we need
   ansible.builtin.include_vars:
-    file: "{{ item }}"
+    file: "{{ var_inc_var }}"
   loop:
     - "{{playbook_dir}}/group_vars/{{gc_cloud}}.yaml"
     - "{{playbook_dir}}/group_vars/ipums.yaml"
+  loop_control:
+    loop_var: var_inc_var
