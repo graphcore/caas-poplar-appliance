@@ -4,7 +4,6 @@ name: "poplar-appliance"
 label: "Graphcore Poplar Appliance"
 description: Poplar host accessible via a web browser and by LDAP SSH.
 logo: https://raw.githubusercontent.com/graphcore/caas-poplar-appliance/main/assets/graphcore.png
-
 parameters:
   - name: operating_system
     label: "Select operating system"
@@ -17,7 +16,6 @@ parameters:
         - "Ubuntu 20.04"
         - "Ubuntu 18.04"
     immutable: true
-
   - name: allocation_size
     label: "Number of IPUs in allocation (<=64)"
     description: |-
@@ -31,8 +29,7 @@ parameters:
         - 16
         - 32
         - 64
-    immutable: true
-
+    immutable: false
   - name: partition_choice
     label: "Create a partition in the allocation, or not?"
     description: |-
@@ -44,16 +41,14 @@ parameters:
         - "No partition required"
         - "Single reconfigurable partition"
     immutable: true
-
   - name: cluster_flavor
     kind: cloud.size
     label: "Choose the size/capabilty of the appliance"
     description: The size of the appliance.
-    immutable: true
+    immutable: false
     options:
       min_ram: 4096
       min_disk: 10
-
   - name: cluster_volume_size
     label: "Data volume size (GB)"
     description: |-
@@ -64,7 +59,6 @@ parameters:
     options:
       min: 10
     immutable: true
-
 usage_template: |-
   {% set webconsole = cluster | service("webconsole") %}
   {% set monitoring = cluster | service("monitoring") %}
@@ -92,8 +86,6 @@ usage_template: |-
   including any packages that have been installed using `apt`.
 
   Monitoring dashboards for the appliance are available using the [Monitoring service]({{ monitoring.url }}).
-
-
 services:
   - name: webconsole
     label: Web console
