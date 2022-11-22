@@ -45,7 +45,7 @@ parameters:
     kind: cloud.size
     label: "Choose the size/capabilty of the appliance"
     description: The size of the appliance.
-    immutable: false
+    immutable: true
     options:
       min_ram: 4096
       min_disk: 10
