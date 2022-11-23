@@ -209,8 +209,12 @@ resource "openstack_compute_instance_v2" "cluster_server" {
            {{mnt.fs_spec}} {{mnt.fs_file}} {{mnt.fs_vfstype}} {{mnt.fs_mntops}} {{mnt.fs_freq}} {{mnt.fs_passno}}
 {% endfor %}
 {% endif %}
+      - path: /etc/rinetd.conf
+        content: |
+           127.0.0.1 8090 {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['vipu_port'] }}
     runcmd:
       - [ systemctl, restart, systemd-networkd]
+      - [ systemctl, restart, rinetd ]
   EOF
 
   metadata = {
