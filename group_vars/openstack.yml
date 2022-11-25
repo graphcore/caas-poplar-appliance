@@ -31,7 +31,7 @@ cluster_ssh_user: ipuuser
 poplar_appliance_images:
   - name: "Ubuntu 20.04"
     friendly: "Focal"
-    image_name: "ubuntu20.04-azimuth-poplar"
+    image_name: "ubuntu20.04-azimuth-poplar-test"
     image_tag: "gc_tag_latest"
   - name: "Ubuntu 18.04"
     friendly: "Bionic"
