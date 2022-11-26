@@ -35,5 +35,5 @@ poplar_appliance_images:
     image_tag: "gc_tag_latest"
   - name: "Ubuntu 18.04"
     friendly: "Bionic"
-    image_name: "ubuntu18.04-azimuth-poplar"
+    image_name: "ubuntu18.04-azimuth-poplar-test"
     image_tag: "gc_tag_latest"
