@@ -192,11 +192,6 @@ resource "openstack_compute_instance_v2" "cluster_server" {
            #    Email: cloud-development@graphcore.ai                                   #
            #                                                                            #
            ##############################################################################
-      - path: /etc/ceph/cephfsnethome.secret
-        owner: root:root
-        permissions: 0600
-        content: |
-           {{cephfs_nethome_secret}}
       - path: /etc/ceph/cephfspublic.secret
         owner: root:root
         permissions: 0600
@@ -240,6 +235,7 @@ resource "openstack_compute_instance_v2" "cluster_server" {
     vipu_ipaddr     = "127.0.0.1"
     vipu_port       = "8090"
     ldap_auth_token = "{{ ldap_auth_token }}"
+    nethome_secret  = "{{ cephfs_nethome_secret | b64encode }}"
   }
 
   block_device {
