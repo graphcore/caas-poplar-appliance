@@ -9,8 +9,8 @@ vipu_seed_port: 11729
 vipu_servers:
   default:
     name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
-    floating_ip: "10.129.110.107"
-    ctrl_net_ip: "10.3.47.143"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
     vipu_port: "8090"
   sysopssandpit:
     name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
