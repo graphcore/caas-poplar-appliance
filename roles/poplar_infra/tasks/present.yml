@@ -57,7 +57,7 @@
     - name: Copy clouds.yaml file
       ansible.builtin.copy:
         decrypt: yes
-        src: "{{playbook_dir}}/files/clouds-{{gc_cloud}}.yaml"
+        src: "{{playbook_dir}}/files/clouds-{{gc_tenancy | default('gc_cloud')}}.yaml"
         dest: "/etc/openstack/clouds.yaml"
         mode: 0666
 
