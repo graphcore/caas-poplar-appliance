@@ -31,11 +31,15 @@
 
 - name: Set allocation name
   ansible.builtin.set_fact:
-    allocation_name: "{{appliance_user}}-{{cluster_name}}"
+    allocation_name: "{{cluster_id}}-{{appliance_user}}-{{cluster_name}}-{{allocation_size}}"
 
 - name: Generate partition name
   ansible.builtin.set_fact:
     user_partition: "{{ ('Single reconfigurable partition' in partition_choice) | ternary(allocation_name ~ '-reconfig', 'N/A')  }}"
+
+- name: Generate port number for instance-specific V-IPU container
+  ansible.builtin.set_fact:
+    vipu_container_port: "{{ vipu_seed_port | int + cluster_id | int }}"
 
 - name: Define the terraform state
   ansible.builtin.set_fact:
