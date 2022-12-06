@@ -5,7 +5,7 @@
 # For deployments that occupy part of a cloud we use the tenancy name to define
 # the properties. Apart from the IPUM list, which is de facto part of the
 # containing cloud. In the case of dev1 the containing cloud is cl1
-gc_tenancy: "gbnwp_dev1"
+#gc_tenancy: "gbnwp_dev1"
 
 control_network_name: "azimuth-dev1-vpod-common-ctrl"
 storage_network_name: "azimuth-dev1-vpod-common-storage"
