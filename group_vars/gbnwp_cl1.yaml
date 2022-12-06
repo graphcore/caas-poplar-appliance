@@ -5,7 +5,7 @@
 ##
 # Use the following VIPU servers
 vipu_ver: "1.18.0"
-vipu_seed_port: 11729
+azimuth_vipu_base_port: 11729
 vipu_servers:
   default:
     name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
