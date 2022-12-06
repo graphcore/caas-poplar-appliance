@@ -1,6 +1,9 @@
-# This file contains parameters common to all gbnwp-cl2:
+# This file contains parameters common to all gbnwp-cl1 dev1:
 #   - projects/tenancies
 #   - vpods
+
+control_network_name: "azimuth-dev1-vpod-common-ctrl"
+storage_network_name: "azimuth-dev1-vpod-common-storage"
 
 ##
 # Use the following VIPU servers

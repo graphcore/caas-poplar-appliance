@@ -64,7 +64,7 @@
     - name: Get ID of common_ctrl network
       openstack.cloud.networks_info:
         cloud: openstack
-        name: azimuth-vpod-common-ctrl
+        name: "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}"
       register: ctrl_result
       environment:
         OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
@@ -72,8 +72,8 @@
     - name: Debug ctrl_network result
       ansible.builtin.debug:
         msg: "Ctrl network output {{ ctrl_result }}"
-    # Ensure azimuth-vpod-common-ctrl RBAC policy exists
 
+    # Ensure azimuth-vpod-common-ctrl RBAC policy exists
     - name: Create a new network RBAC policy
       openstack.cloud.neutron_rbac_policy:
         object_id: "{{ ctrl_result.openstack_networks[0].id}}"
@@ -89,7 +89,7 @@
     - name: Get ID of common_storage network
       openstack.cloud.networks_info:
         cloud: openstack
-        name: azimuth-vpod-common-storage
+        name: "{{ storage_network_name | default('azimuth-vpod-common-storage') }}"
       register: storage_result
       environment:
         OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"

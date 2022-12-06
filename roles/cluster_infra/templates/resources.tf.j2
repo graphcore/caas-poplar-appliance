@@ -26,15 +26,15 @@ resource "openstack_networking_secgroup_rule_v2" "cluster_egress_v4" {
 }
 
 # Only permit access to instance VIPU container
-resource "openstack_networking_secgroup_rule_v2" "vipu_server_v4" {
-  direction         = "egress"
-  ethertype         = "IPv4"
-  protocol          = "tcp"
-  port_range_min    = "{{ vipu_container_port }}"
-  port_range_max    = "{{ vipu_container_port }}"
-  remote_ip_prefix  = "{{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }}/32"
-  security_group_id = "${openstack_networking_secgroup_v2.cluster_secgroup.id}"
-}
+# resource "openstack_networking_secgroup_rule_v2" "vipu_server_v4" {
+#   direction         = "egress"
+#   ethertype         = "IPv4"
+#   protocol          = "tcp"
+#   port_range_min    = "{{ vipu_container_port }}"
+#   port_range_max    = "{{ vipu_container_port }}"
+#   remote_ip_prefix  = "{{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }}/32"
+#   security_group_id = "${openstack_networking_secgroup_v2.cluster_secgroup.id}"
+# }
 
 # Allow ingress for SSH
 resource "openstack_networking_secgroup_rule_v2" "cluster_ingress_ssh_v4" {
