@@ -5,26 +5,27 @@
 ##
 # Use the following VIPU servers
 vipu_ver: "1.18.0"
+azimuth_vipu_base_port: 11729
 vipu_servers:
   default:
-    name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
-    floating_ip: "10.129.110.107"
-    ctrl_net_ip: "10.3.47.143"
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
     vipu_port: "8090"
   sysopssandpit:
-    name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
-    floating_ip: "10.129.110.107"
-    ctrl_net_ip: "10.3.47.143"
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
     vipu_port: "8090"
   wonderland:
-    name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
-    floating_ip: "10.129.110.107"
-    ctrl_net_ip: "10.3.47.143"
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
     vipu_port: "8090"
   alderaan:
-    name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
-    floating_ip: "10.129.110.107"
-    ctrl_net_ip: "10.3.47.143"
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
     vipu_port: "8090"
 
 dns_base: "openstack.graphcore.ai."
