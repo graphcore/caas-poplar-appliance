@@ -92,11 +92,11 @@ resource "openstack_networking_port_v2" "rnic" {
 # This block brings up a Ctrl network interface
 #
 data "openstack_networking_network_v2" "ctrlnet" {
-  tags = [ "ctrl", "azimuth-vpod-common-ctrl" ]
+  tags = [ "storage", "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}" ]
 }
 
 data "openstack_networking_subnet_v2" "ctrlsub" {
-  tags = [ "ctrl", "azimuth-vpod-common-ctrl" ]
+  tags = [ "storage", "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}" ]
 }
 
 resource "openstack_networking_port_v2" "ctrl" {
@@ -114,11 +114,11 @@ resource "openstack_networking_port_v2" "ctrl" {
 # This block brings up the storage network interface
 #
 data "openstack_networking_network_v2" "stornet" {
-  tags = [ "storage", "azimuth-vpod-common-storage" ]
+  tags = [ "storage", "{{ storage_network_name | default('azimuth-vpod-common-storage') }}" ]
 }
 
 data "openstack_networking_subnet_v2" "storsub" {
-  tags = [ "storage", "azimuth-vpod-common-storage" ]
+  tags = [ "storage", "{{ storage_network_name | default('azimuth-vpod-common-storage') }}" ]
 }
 
 resource "openstack_networking_port_v2" "stor" {
