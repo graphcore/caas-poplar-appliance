@@ -22,7 +22,7 @@ data "openstack_networking_secgroup_v2" "user_secgroup" {
 ##
 # Allow ingress for this appliance only to the appliance specific container port
 #
-resource "openstack_networking_secgroup_rule_v2" "{{ allocation_name }}" {
+resource "openstack_networking_secgroup_rule_v2" "{{appliance_user}}-{{cluster_name}}-{{cluster_id}}" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
