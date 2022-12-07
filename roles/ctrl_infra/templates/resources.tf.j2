@@ -26,7 +26,6 @@ resource "openstack_networking_secgroup_rule_v2" "{{ allocation_name }}" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
-#  remote_ip_prefix  = "{{ appliance_ctrl_ip }}"
   remote_group_id   = "${data.openstack_networking_secgroup_v2.user_secgroup.id}"
   port_range_min    = "{{ vipu_container_port }}"
   port_range_max    = "{{ vipu_container_port }}"
