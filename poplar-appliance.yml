@@ -8,6 +8,7 @@
       - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('init_infra','') }}"
       - "{{ (terraform_state == 'present') | ternary('poplar_infra','') }}"
       - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('cluster_infra','') }}"
+      - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('ctrl_infra','') }}"
       - "{{ (terraform_state == 'absent' ) | ternary('poplar_infra','') }}"
 
   tasks:

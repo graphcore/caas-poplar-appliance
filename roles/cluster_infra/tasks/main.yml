@@ -110,5 +110,6 @@
     cluster_access_ip: "{{ terraform_provision.outputs.cluster_access_ip.value }}"
     cluster_user: "{{ terraform_provision.outputs.cluster_user.value }}"
     cluster_flavour_name: "{{ terraform_provision.outputs.cluster_flavour_name.value }}"
+    appliance_ctrl_ip: "{{ terraform_provision.outputs.appliance_ctrl_ip.value }}"
   when:
     - terraform_state == "present"

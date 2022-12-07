@@ -1,0 +1,75 @@
+- block:
+    - name: Look up floating ip
+      stackhpc.terraform.os_floating_ip_info:
+        floating_ip: "{{ cluster_floating_ip }}"
+      register: cluster_floating_ip_info
+
+    - name: Set floating IP address fact
+      set_fact:
+        cluster_floating_ip_address: "{{ cluster_floating_ip_info.floating_ip.floating_ip_address }}"
+  when:
+    - cluster_floating_ip is defined
+    - cluster_floating_ip
+
+- name: Make Terraform project directory
+  ansible.builtin.file:
+    path: "{{ terraform_project_path }}"
+    state: directory
+
+- name: Write backend configuration
+  ansible.builtin.copy:
+    content: |
+      terraform {
+        backend "{{ terraform_backend_type }}" { }
+      }
+    dest: "{{ terraform_project_path }}/backend.tf"
+
+- name: Copy clouds.yaml file
+  ansible.builtin.copy:
+    decrypt: yes
+    src: "{{playbook_dir}}/files/clouds-{{gc_tenancy | default(gc_cloud)}}.yaml"
+    dest: "/etc/openstack/clouds.yaml"
+    mode: 0666
+
+- name: Template Terraform files into project directory
+  ansible.builtin.template:
+    src: "{{ tf_var_ctrl }}.j2"
+    dest: "{{ terraform_project_path }}/{{ tf_var_ctrl }}"
+  loop:
+    - providers.tf
+    - resources.tf
+  loop_control:
+    loop_var: tf_var_ctrl
+
+- name: Get resources.tf for debug
+  ansible.builtin.slurp:
+    src: "{{ terraform_project_path }}/resources.tf"
+  register: slurpfile
+  tags: [debug, never]
+
+- name: Debug resources.tf file
+  ansible.builtin.debug:
+    msg: "{{ slurpfile['content'] | b64decode }}"
+  tags: [debug, never]
+
+# - name: Test if appliance VM exists
+#   ansible.builtin.shell:
+#     cmd: openstack server list --name {{cluster_name}}
+#   register: vm_query
+#   when: terraform_state == 'absent'
+
+- name: Provision infrastructure
+  community.general.terraform:
+    binary_path: "{{ terraform_binary_path }}"
+    project_path: "{{ terraform_project_path }}"
+    state: "{{ terraform_state }}"
+    backend_config: "{{ terraform_backend_config }}"
+    force_init: yes
+    init_reconfigure: yes
+  register: terraform_provision
+  #when: (terraform_state == 'present') or (terraform_state == 'absent' and "cluster_name in vm_query.stdout")
+
+- name: Remove clouds.yaml file so next task runs as the Azimuth user
+  ansible.builtin.file:
+    state: absent
+    path: "/etc/openstack/clouds.yaml"
