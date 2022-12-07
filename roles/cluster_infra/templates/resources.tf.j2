@@ -35,7 +35,7 @@ resource "openstack_networking_secgroup_rule_v2" "cluster_ingress_ssh_v4" {
   security_group_id = "${openstack_networking_secgroup_v2.cluster_secgroup.id}"
 }
 
-RBAC this group into the BE
+#RBAC this group into the BE
 resource "openstack_networking_rbac_policy_v2" "rbac_policy_ctrlsg_user" {
   action        = "access_as_shared"
   object_id     = "${openstack_networking_secgroup_v2.cluster_secgroup.id}"
