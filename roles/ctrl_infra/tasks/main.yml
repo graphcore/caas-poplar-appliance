@@ -67,7 +67,9 @@
     force_init: yes
     init_reconfigure: yes
   register: terraform_provision
-  #when: (terraform_state == 'present') or (terraform_state == 'absent' and "cluster_name in vm_query.stdout")
+  environment:
+    OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+    #when: (terraform_state == 'present') or (terraform_state == 'absent' and "cluster_name in vm_query.stdout")
 
 - name: Remove clouds.yaml file so next task runs as the Azimuth user
   ansible.builtin.file:
