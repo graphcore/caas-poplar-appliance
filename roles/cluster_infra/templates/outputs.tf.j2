@@ -27,7 +27,7 @@ output "cluster_user" {
 
 output "appliance_ctrl_ip" {
   description = "Appliance IP address on the Ctrl network"
-  value       = "${openstack_networking_port_v2.ctrl.fixed_ip.ip_address}"
+  value       = "${openstack_networking_port_v2.ctrl.fixed_ip[0].ip_address}"
 }
 
 output "user_rnic_net_id" {
