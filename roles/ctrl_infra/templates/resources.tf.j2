@@ -6,11 +6,18 @@ provider "openstack" {
 }
 
 ##
-# Find the SG for the common_ctrl_network
+# Find the BE SG for the common_ctrl_network
 #
 data "openstack_networking_secgroup_v2" "ctrl_secgroup" {
   name = "{{ control_network_name }}"
 }
+
+##
+# Find the FE SG that has been RBAC'd into the BE
+data "openstack_networking_secgroup_v2" "user_secgroup" {
+  name = "{{ cluster_name }}-{{ cluster_type }}"
+}
+
 
 ##
 # Allow ingress for this appliance only to the appliance specific container port
@@ -19,7 +26,8 @@ resource "openstack_networking_secgroup_rule_v2" "{{ allocation_name }}" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
-  remote_ip_prefix  = "{{ appliance_ctrl_ip }}"
+#  remote_ip_prefix  = "{{ appliance_ctrl_ip }}"
+  remote_group_id   = "${data.openstack_networking_secgroup_v2.user_secgroup.id}"
   port_range_min    = "{{ vipu_container_port }}"
   port_range_max    = "{{ vipu_container_port }}"
   security_group_id = "${data.openstack_networking_secgroup_v2.ctrl_secgroup.id}"
