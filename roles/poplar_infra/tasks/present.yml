@@ -83,8 +83,21 @@
         cloud: openstack
         action: "access_as_shared"
         state: present
+      register: rbac_result
       environment:
         OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+
+    - name: Debug rbac
+      ansible.builtin.debug:
+        msg: "RBAC policy out: {{ rbac_result }}"
+
+    - name: Set fact with the BE project ID
+      ansible.builtin.set_fact:
+        backend_project: "{{ rbac_result.policy.project_id }}"
+
+    - name: Debug backend_project
+      ansible.builtin.debug:
+        msg: "Backend project ID: {{ backend_project }}"
 
     - name: Get ID of common_storage network
       openstack.cloud.networks_info:
