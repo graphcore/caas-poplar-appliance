@@ -52,7 +52,7 @@
     # Remove the IPUMs in assigned_ipums_list from the user's vpod
     - name: Shuffle IPUMs back to staging
       ansible.builtin.include_role:
-        name: poplar_infra
+        name: ipum_infra
         tasks_from: truffleshuffle.yml
 
     - name: Remove clouds.yaml file so next play runs as the Azimuth user

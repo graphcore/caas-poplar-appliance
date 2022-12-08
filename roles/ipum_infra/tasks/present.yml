@@ -131,7 +131,7 @@
 
     - name: Shuffle IPUMs
       ansible.builtin.include_role:
-        name: poplar_infra
+        name: ipum_infra
         tasks_from: truffleshuffle.yml
 
     - name: Create partition if user requested
