@@ -38,7 +38,12 @@
   ansible.builtin.set_fact:
     appliance_tenancy: "{{ openstack_cli_tenancy_name.stdout | default( 'ipuops') }}"
 
-- name: Set allocation name
+- name: Set OLD allocation name
+  ansible.builtin.set_fact:
+    allocation_name_old: "{{ allocation_name }}"
+  when: allocation_name is defined
+
+- name: Set NEW allocation name
   ansible.builtin.set_fact:
     allocation_name: "{{cluster_id}}-{{appliance_user}}-{{cluster_name}}-{{allocation_size}}"
 

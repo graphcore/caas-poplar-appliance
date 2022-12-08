@@ -18,31 +18,31 @@
     # So here we must have an allocation, which per SYSOP-1090 we must
     # delete. But the allocation might have partitions, so we need to
     # list and delete those
-    - name: List partitions in our allocation
+    # - name: List partitions in our allocation
+    #   ansible.builtin.command:
+    #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
+    #   register: vipu_partition_out
+    #   ignore_errors: true
+
+    # - name: Partition removal block
+    #   block:
+    #     - name: Convert partition_out to list
+    #       ansible.builtin.set_fact:
+    #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+    #
+    #     - name: Remove partitions in our allocation
+    #       ansible.builtin.command:
+    #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove partition {{ part_var }} --force
+    #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+    #       loop_control:
+    #         loop_var: part_var
+    #       register: partition_remove_out
+    #   when: vipu_partition_out.rc == 0
+
+    - name: Remove OLD allocation
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
-      register: vipu_partition_out
-      ignore_errors: true
-
-    - name: Partition removal block
-      block:
-        - name: Convert partition_out to list
-          ansible.builtin.set_fact:
-            vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
-
-        - name: Remove partitions in our allocation
-          ansible.builtin.command:
-            cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove partition {{ part_var }} --force
-          loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
-          loop_control:
-            loop_var: part_var
-          register: partition_remove_out
-      when: vipu_partition_out.rc == 0
-
-    - name: Remove allocation
-      ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{ allocation_name }}
-      register: allocation_remove_out
+        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{ allocation_name_old }}
+      register: allocation_remove_old_out
 
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
@@ -134,11 +134,11 @@
         name: ipum_infra
         tasks_from: truffleshuffle.yml
 
-    - name: Create partition if user requested
+    - name: Create partition if user requested, here we need to act on the vipu-container
       block:
         - name: Create partition
           ansible.builtin.command:
-            cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
+            cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} -P {{ vipu_container_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
           register: vipu_part_mk
           ignore_errors: true
 
