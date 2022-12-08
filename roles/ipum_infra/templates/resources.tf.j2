@@ -1,0 +1,97 @@
+##
+# Use the cloud "openstack" from the clouds.yaml file.
+#
+provider "openstack" {
+  cloud = "openstack"
+}
+
+variable "rnic_physnet" {
+  default = "physnet1"
+}
+
+##
+# Create a CTRL network security group for the FE
+#
+# Create a security group for the user's FE
+resource "openstack_networking_secgroup_v2" "user_secgroup" {
+  name                 = "{{ appliance_user }}-{{ cluster_name }}-{{ cluster_id }}"
+  delete_default_rules = true   # Fully manage with terraform
+}
+
+# RBAC the user's security group into the user's front end
+resource "openstack_networking_rbac_policy_v2" "user_sg_BE_to_FE" {
+  action        = "access_as_shared"
+  object_id     = "${openstack_networking_secgroup_v2.user_secgroup.id}"
+  object_type   = "security_group"
+  target_tenant = "{{ appliance_project }}"
+}
+
+# Find the BE SG for the common_ctrl_network
+data "openstack_networking_secgroup_v2" "ctrl_secgroup" {
+  name = "{{ control_network_name }}"
+}
+
+# Allow ingress from the user SG to the VIPU container port
+resource "openstack_networking_secgroup_rule_v2" "user_to_vipu_rule" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  remote_group_id   = "${data.openstack_networking_secgroup_v2.user_secgroup.id}"
+  port_range_min    = "{{ vipu_container_port }}"
+  port_range_max    = "{{ vipu_container_port }}"
+  security_group_id = "${data.openstack_networking_secgroup_v2.ctrl_secgroup.id}"
+}
+
+##
+# Create an user RNIC network
+#
+resource "openstack_networking_network_v2" "user_rnic_net" {
+  name       = "{{ cluster_name }}-{{cluster_id}}-rnic"
+  mtu        = 1500
+  dns_domain = "{{cluster_name}}.{{dns_base}}"
+  # avoid connection tracking in ovn
+  port_security_enabled = false
+  tags       = [ "user-rnic", "{{cluster_id}}", "{{cluster_name}}", "{{appliance_user}}" ]
+  segments {
+    physical_network = var.rnic_physnet
+    network_type     = "vlan"
+  }
+}
+
+resource "openstack_networking_subnet_v2" "user_rnic_subnet" {
+  name       = "{{ cluster_name }}-{{cluster_id}}-rnic-net"
+  network_id = openstack_networking_network_v2.user_rnic_net.id
+  cidr       = "10.5.0.0/16"
+  ip_version = 4
+  tags       = [ "user-rnic", "{{cluster_id}}", "{{cluster_name}}", "{{appliance_user}}" ]
+  no_gateway = true
+  allocation_pool {
+  start = "10.5.{{cidr_hint}}.100"
+  end   = "10.5.{{cidr_hint}}.199"
+  }
+}
+
+##
+# RBAC the user RNIC network into the user's project
+resource "openstack_networking_rbac_policy_v2" "rbac_policy_rnic_user" {
+  action        = "access_as_shared"
+  object_id     = "${openstack_networking_network_v2.user_rnic_net.id}"
+  object_type   = "network"
+  target_tenant = "{{ appliance_project }}"
+}
+
+##
+# Shuffle - Assign IPUMs to project
+module "ipum-user-allocs" {
+  source     = "git::ssh://git@gitlab.com/openstack-vipu/terraform-modules/vpod-ironic-ipums.git?ref=SYSOP-1000"
+  vpod_name  = "{{cluster_name}}"
+  cluster_name = "{{gc_cloud}}"
+  rnic_network_id = "${openstack_networking_network_v2.user_rnic_net.id}"
+  assigned_ipums = {{assigned_ipums_list | tojson }}
+  ipum_yaml    = "ipums.yml"
+  az = "{{gc_cloud | replace('_','-')}}-general"
+  depends_on = [
+   openstack_networking_subnet_v2.user_rnic_subnet
+  ]
+}
+

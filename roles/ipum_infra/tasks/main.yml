@@ -1,0 +1,9 @@
+---
+
+- name: Import tasks when building
+  ansible.builtin.import_tasks: present.yml
+  when: terraform_state == 'present'
+
+- name: Import tasks when destroying
+  ansible.builtin.import_tasks: absent.yml
+  when: terraform_state == 'absent'

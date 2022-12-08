@@ -6,10 +6,9 @@
     image_tag: "{{ poplar_appliance_images | selectattr('name', 'equalto', operating_system) | map(attribute='image_tag') | first }}"
     execution_order:
       - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('init_infra','') }}"
-      - "{{ (terraform_state == 'present') | ternary('poplar_infra','') }}"
-      - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('cluster_infra','') }}"
-      - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('ctrl_infra','') }}"
-      - "{{ (terraform_state == 'absent' ) | ternary('poplar_infra','') }}"
+      - "{{ (terraform_state == 'present') | ternary('ipum_infra','') }}"
+      - "{{ (terraform_state == 'present' or terraform_state == 'absent') | ternary('poplar_infra','') }}"
+      - "{{ (terraform_state == 'absent' ) | ternary('ipum_infra','') }}"
 
   tasks:
     - name: Include the roles needed
