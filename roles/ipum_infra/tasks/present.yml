@@ -10,6 +10,7 @@
         cmd: vipu-admin{{vipu_ver}} --showjson create allocation {{allocation_name}} --size {{allocation_size}}
       register: allocation_result
       delegate_to: "ipuuser@{{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }}"
+      remote_user: ipuuser
   rescue:
     - name: Fail if there simply is not enough space
       ansible.builtin.fail:
