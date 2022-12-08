@@ -101,7 +101,7 @@ resource "openstack_networking_port_v2" "ctrl" {
     subnet_id = data.openstack_networking_subnet_v2.ctrlsub.id
   }
   port_security_enabled = "true"
-  security_group_ids = [ openstack_networking_secgroup_v2.poplar_secgroup.id, openstack_networking_secgroup_v2.vipu_secgroup.id ]
+  security_group_ids = [ openstack_networking_secgroup_v2.poplar_secgroup.id, data.openstack_networking_secgroup_v2.vipu_secgroup.id ]
 }
 
 ##
