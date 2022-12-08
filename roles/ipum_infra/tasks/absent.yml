@@ -27,7 +27,7 @@
 
 - name: List allocation - the return code shows if the expected alloc exists
   ansible.builtin.command:
-    cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 --showjson get allocation {{allocation_name}}
+    cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} -P 8091 --showjson get allocation {{allocation_name}}
   register: vipu_alloc_list
   ignore_errors: true
 
@@ -39,7 +39,7 @@
 
     - name: Remove allocation
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{ allocation_name }}
+        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} -P 8091 remove allocation {{ allocation_name }}
       register: allocation_remove_out
 
     - name: Copy clouds.yaml file
