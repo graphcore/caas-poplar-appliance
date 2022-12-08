@@ -36,7 +36,7 @@ resource "openstack_networking_secgroup_rule_v2" "user_to_vipu_rule" {
   direction         = "ingress"
   ethertype         = "IPv4"
   protocol          = "tcp"
-  remote_group_id   = "${data.openstack_networking_secgroup_v2.user_secgroup.id}"
+  remote_group_id   = "${openstack_networking_secgroup_v2.user_secgroup.id}"
   port_range_min    = "{{ vipu_container_port }}"
   port_range_max    = "{{ vipu_container_port }}"
   security_group_id = "${data.openstack_networking_secgroup_v2.ctrl_secgroup.id}"
