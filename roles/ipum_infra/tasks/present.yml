@@ -23,7 +23,7 @@
     #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
     #   register: vipu_partition_out
     #   ignore_errors: true
-
+    #
     # - name: Partition removal block
     #   block:
     #     - name: Convert partition_out to list
@@ -44,6 +44,11 @@
         cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name_old}} --size {{allocation_size}}
       register: allocation_remove_old_out
       when: allocation_name_old is defined
+
+      #TODO: Between these two tasks we need to do something special. The old allocation is removed and the new
+      #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing 
+      #      two container definitions, but with the same port mappings. Options: delay sufficient time for the 
+      #      loop to have triggered, and the old allocation definition is removed from docker-compose.yml
 
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
@@ -137,6 +142,31 @@
 
     - name: Create partition if user requested, here we need to act on the vipu-container
       block:
+        # In some cases (for example in the re-execution of a failed appliance)
+        # we have a container already running, and already with a partition configured.
+        # Thus, in that situation, we first need to remove the partition and then build
+        # the new one.
+        - name: List partitions in our allocation
+          ansible.builtin.command:
+            cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
+          register: vipu_partition_out
+          ignore_errors: true
+
+        - name: Partition removal block
+          block:
+            - name: Convert partition_out to list
+              ansible.builtin.set_fact:
+                vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+
+            - name: Remove partitions in our allocation
+              ansible.builtin.command:
+                cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
+              loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+              loop_control:
+                loop_var: part_var
+              register: partition_remove_out
+          when: vipu_partition_out.rc == 0
+
         - name: Create partition
           ansible.builtin.command:
             cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
