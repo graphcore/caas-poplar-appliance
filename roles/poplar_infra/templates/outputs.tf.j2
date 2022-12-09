@@ -30,6 +30,7 @@ output "cluster_user" {
 #   value       = "${openstack_networking_port_v2.ctrl.fixed_ip[0].ip_address}"
 # }
 
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
 output "user_rnic_net_id" {
   description = "OpenStack ID for the user's rnic network"
   value       = "{{ user_rnic_net_id }}"
@@ -39,4 +40,4 @@ output "user_rnic_subnet_id" {
   description = "OpenStack ID for the user's rnic subnet"
   value       = "{{ user_rnic_subnet_id }}"
 }
-
+{% endif %}
