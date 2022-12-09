@@ -43,6 +43,7 @@
       ansible.builtin.command:
         cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name_old}} --size {{allocation_size}}
       register: allocation_remove_old_out
+      when: allocation_name_old is defined
 
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
