@@ -37,8 +37,19 @@ resource "openstack_networking_secgroup_rule_v2" "user_to_vipu_rule" {
   ethertype         = "IPv4"
   protocol          = "tcp"
   remote_group_id   = "${openstack_networking_secgroup_v2.user_secgroup.id}"
-  port_range_min    = "{{ vipu_container_port }}"
-  port_range_max    = "{{ vipu_container_port }}"
+  port_range_min    = "{{ vipu_container_user_port }}"
+  port_range_max    = "{{ vipu_container_admin_port }}"
+  security_group_id = "${data.openstack_networking_secgroup_v2.ctrl_secgroup.id}"
+}
+
+# Allow ingress from the Azimuth runner to the VIPU container port
+resource "openstack_networking_secgroup_rule_v2" "azimuth_to_vipu_rule" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  remote_ip_prefix  = "{{ azimuth_ext_ip_prefix }}"
+  port_range_min    = "{{ vipu_container_user_port }}"
+  port_range_max    = "{{ vipu_container_admin_port }}"
   security_group_id = "${data.openstack_networking_secgroup_v2.ctrl_secgroup.id}"
 }
 

@@ -7,10 +7,8 @@
     # 2. The allocation already exists
     - name: Create the allocation of requested size
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} --showjson create allocation {{allocation_name}} --size {{allocation_size}}
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
       register: allocation_result
-      delegate_to: "ipuuser@{{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }}"
-      remote_user: ipuuser
   rescue:
     - name: Fail if there simply is not enough space
       ansible.builtin.fail:
@@ -43,12 +41,12 @@
 
     - name: Remove OLD allocation
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} remove allocation {{ allocation_name_old }}
+        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name_old}} --size {{allocation_size}}
       register: allocation_remove_old_out
 
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} --showjson create allocation {{allocation_name}} --size {{allocation_size}}
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
       register: allocation_result
   always:
     - name: Fail if the allocation wasn't possible
@@ -124,7 +122,7 @@
 
     - name: Get allocation properties
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} --showjson get allocation {{allocation_name}}
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 get allocation {{allocation_name}} --size {{allocation_size}}
       register: assigned_alloc_list
 
     - name: List assigned IPUMs cos we need it for the truffle-shuffle
@@ -140,7 +138,7 @@
       block:
         - name: Create partition
           ansible.builtin.command:
-            cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} -P {{ vipu_container_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
+            cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
           register: vipu_part_mk
           ignore_errors: true
 
