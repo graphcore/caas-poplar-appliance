@@ -167,6 +167,7 @@ resource "openstack_compute_instance_v2" "cluster_server" {
           DHCP=yes
           [DHCPv4]
           UseDNS=yes
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
       - path: /etc/systemd/network/06-rnic.network
         content: |
           [Match]
@@ -175,6 +176,7 @@ resource "openstack_compute_instance_v2" "cluster_server" {
           DHCP=yes
           [DHCPv4]
           UseDNS=false
+{% endif %}
       - path: /etc/systemd/network/07-stor.network
         content: |
           [Match]
@@ -257,9 +259,11 @@ resource "openstack_compute_instance_v2" "cluster_server" {
     delete_on_termination = true
   }
 
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
   network {
     port = "${openstack_networking_port_v2.rnic.id}"
   }
+{% endif %}
 
   network {
     port = "${openstack_networking_port_v2.ctrl.id}"
