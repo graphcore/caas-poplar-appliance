@@ -53,11 +53,11 @@
 
 - name: Generate user port number for instance-specific V-IPU container
   ansible.builtin.set_fact:
-    vipu_container_user_port: "{{ ((cluster_id | int * 10) % 65536) + azimuth_vipu_base_port | int ) }}"
+    vipu_container_user_port: "{{ ((cluster_id | int * 10) % 65536) + azimuth_vipu_base_port | int }}"
 
 - name: Generate admin port number for instance-specific V-IPU container
   ansible.builtin.set_fact:
-    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 1) % 65536) + azimuth_vipu_base_port | int ) }}"
+    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 1) % 65536) + azimuth_vipu_base_port | int }}"
 
 - name: Define the terraform state
   ansible.builtin.set_fact:
