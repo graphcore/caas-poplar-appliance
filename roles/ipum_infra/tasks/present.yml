@@ -39,16 +39,21 @@
     #       register: partition_remove_out
     #   when: vipu_partition_out.rc == 0
 
+    # So if we've got here, there is an existing allocation with the same name,
+    # AND there is sufficient space for another (this is a dubious test because
+    # we're going to replace the existing allocation).
     - name: Remove OLD allocation
       ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name_old}} --size {{allocation_size}}
+        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name}}
       register: allocation_remove_old_out
-      when: allocation_name_old is defined
 
       #TODO: Between these two tasks we need to do something special. The old allocation is removed and the new
-      #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing 
-      #      two container definitions, but with the same port mappings. Options: delay sufficient time for the 
+      #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing
+      #      two container definitions, but with the same port mappings. Options: delay sufficient time for the
       #      loop to have triggered, and the old allocation definition is removed from docker-compose.yml
+    - name: TEMP - pause here to ensure our loop detects the allocation removal
+      ansible.builtin.pause:
+        minutes: 2
 
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
@@ -93,18 +98,6 @@
       environment:
         OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
 
-    - name: Debug rbac
-      ansible.builtin.debug:
-        msg: "RBAC policy out: {{ rbac_result }}"
-
-    - name: Set fact with the BE project ID
-      ansible.builtin.set_fact:
-        backend_project: "{{ rbac_result.policy.project_id }}"
-
-    - name: Debug backend_project
-      ansible.builtin.debug:
-        msg: "Backend project ID: {{ backend_project }}"
-
     - name: Get ID of common_storage network
       openstack.cloud.networks_info:
         cloud: openstack
@@ -146,26 +139,26 @@
         # we have a container already running, and already with a partition configured.
         # Thus, in that situation, we first need to remove the partition and then build
         # the new one.
-        - name: List partitions in our allocation
-          ansible.builtin.command:
-            cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
-          register: vipu_partition_out
-          ignore_errors: true
-
-        - name: Partition removal block
-          block:
-            - name: Convert partition_out to list
-              ansible.builtin.set_fact:
-                vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
-
-            - name: Remove partitions in our allocation
-              ansible.builtin.command:
-                cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
-              loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
-              loop_control:
-                loop_var: part_var
-              register: partition_remove_out
-          when: vipu_partition_out.rc == 0
+        # - name: List partitions in our allocation
+        #   ansible.builtin.command:
+        #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
+        #   register: vipu_partition_out
+        #   ignore_errors: true
+        #
+        # - name: Partition removal block
+        #   block:
+        #     - name: Convert partition_out to list
+        #       ansible.builtin.set_fact:
+        #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+        #
+        #     - name: Remove partitions in our allocation
+        #       ansible.builtin.command:
+        #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
+        #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+        #       loop_control:
+        #         loop_var: part_var
+        #       register: partition_remove_out
+        #   when: vipu_partition_out.rc == 0
 
         - name: Create partition
           ansible.builtin.command:
