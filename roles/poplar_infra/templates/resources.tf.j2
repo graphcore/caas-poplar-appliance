@@ -14,7 +14,7 @@ data "openstack_identity_auth_scope_v3" "scope" {
 
 # Security group to hold rules for the node
 resource "openstack_networking_secgroup_v2" "poplar_secgroup" {
-  name                 = "{{ appliance_user }}-{{ cluster_name }}-{{ cluster_id }}"
+  name                 = "{{ cluster_name }}-{{ cluster_id }}"
   delete_default_rules = true   # Fully manage with terraform
 }
 
