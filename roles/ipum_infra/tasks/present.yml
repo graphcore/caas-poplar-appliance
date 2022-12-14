@@ -65,8 +65,8 @@
       ansible.builtin.fail:
         msg: No allocations of size {{allocation_size}} available
       when:
-        - '"no free allocation" in allocation_result.stderr'
         - allocation_size | int > 0
+        - '"no free allocation" in allocation_result.stderr'
 
     - name: Copy clouds.yaml file
       ansible.builtin.copy:
