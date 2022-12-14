@@ -8,6 +8,7 @@
     - name: Create the allocation of requested size
       ansible.builtin.command:
         cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
+      when: allocation_size | int > 0
       register: allocation_result
   rescue:
     - name: Fail if there simply is not enough space
@@ -63,7 +64,9 @@
     - name: Fail if the allocation wasn't possible
       ansible.builtin.fail:
         msg: No allocations of size {{allocation_size}} available
-      when: '"no free allocation" in allocation_result.stderr'
+      when:
+        - '"no free allocation" in allocation_result.stderr'
+        - allocation_size | int > 0
 
     - name: Copy clouds.yaml file
       ansible.builtin.copy:
@@ -122,16 +125,19 @@
     - name: Get allocation properties
       ansible.builtin.command:
         cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 get allocation {{allocation_name}}
+      when: allocation_size | int > 0
       register: assigned_alloc_list
 
     - name: List assigned IPUMs cos we need it for the truffle-shuffle
       ansible.builtin.set_fact:
         assigned_ipums_list: "{{ assigned_alloc_list.stdout | from_json |  moreati.jq.jq('.allocation.spec.agent_ids') }}"
+      when: allocation_size | int > 0
 
     - name: Shuffle IPUMs
       ansible.builtin.include_role:
         name: ipum_infra
         tasks_from: truffleshuffle.yml
+      when: allocation_size | int > 0
 
     - name: Create partition if user requested, here we need to act on the vipu-container
       block:
@@ -173,6 +179,7 @@
             - vipu_part_mk.rc != 0
       when:
         - '"Single reconfigurable partition" in partition_choice'
+        - allocation_size | int > 0
 
     - name: Remove clouds.yaml file so next task runs as the Azimuth user
       ansible.builtin.file:

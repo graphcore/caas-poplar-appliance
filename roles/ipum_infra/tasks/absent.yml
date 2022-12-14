@@ -6,6 +6,7 @@
 - name: List partitions in our allocation (only)
   ansible.builtin.command:
     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
+  when: allocation_size | int > 0
   register: vipu_partition_out
   ignore_errors: true
 
@@ -23,11 +24,14 @@
         loop_var: part_var
       register: partition_remove_out
   # End block
-  when: vipu_partition_out.rc == 0
+  when:
+    - vipu_partition_out.rc == 0
+    - allocation_size | int > 0
 
 - name: List allocation - the return code shows if the expected alloc exists
   ansible.builtin.command:
     cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 --showjson get allocation {{allocation_name}}
+  when: allocation_size | int > 0
   register: vipu_alloc_list
   ignore_errors: true
 
@@ -60,4 +64,6 @@
         state: absent
         path: "/etc/openstack/clouds.yaml"
         # End block cleaning up allocations
-  when: vipu_alloc_list.rc == 0
+  when:
+    - vipu_alloc_list.rc == 0
+    - allocation_size | int > 0

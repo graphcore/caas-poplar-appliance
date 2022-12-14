@@ -25,6 +25,7 @@ parameters:
     default: 4
     options:
       choices:
+        - 0
         - 4
         - 8
         - 16
