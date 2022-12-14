@@ -1,64 +1,285 @@
-##
-# Use the cloud "openstack" from the clouds.yaml file.
-#
-provider "openstack" {
-  cloud = "openstack"
+# Modified by Graphcore Ltd.
+
+#####
+##### The identity scope we are operating in
+##### Used to add tge OpenStack user name to instance metadata
+#####
+data "openstack_identity_auth_scope_v3" "scope" {
+  name = "{{ cluster_name }}"
 }
 
-variable "rnic_physnet" {
-  default = "physnet1"
+#####
+##### Security groups
+#####
+
+# Security group to hold rules for the node
+resource "openstack_networking_secgroup_v2" "poplar_secgroup" {
+  name                 = "{{ cluster_name }}-{{ cluster_id }}"
+  delete_default_rules = true   # Fully manage with terraform
+}
+
+# Allow all egress
+resource "openstack_networking_secgroup_rule_v2" "poplar_egress_v4" {
+  direction         = "egress"
+  ethertype         = "IPv4"
+  security_group_id = "${openstack_networking_secgroup_v2.poplar_secgroup.id}"
+}
+
+# Allow ingress for SSH
+resource "openstack_networking_secgroup_rule_v2" "poplar_ingress_ssh_v4" {
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  port_range_min    = 22
+  port_range_max    = 22
+  security_group_id = "${openstack_networking_secgroup_v2.poplar_secgroup.id}"
+}
+
+# Find the SG RBAC'd from the BE
+data "openstack_networking_secgroup_v2" "vipu_secgroup" {
+  name              = "{{ appliance_user }}-{{ cluster_name }}-{{ cluster_id }}"
+}
+
+#####
+##### Cluster volumes
+#####
+
+resource "openstack_blockstorage_volume_v3" "zenith_volume" {
+  name = "{{ cluster_name }}-{{ cluster_type }}-zenith"
+  size = 1
+}
+
+resource "openstack_blockstorage_volume_v3" "data_volume" {
+  name = "{{ cluster_name }}-{{ cluster_type }}-data"
+  size = "{{ cluster_volume_size }}"
+}
+
+#####
+##### Cluster networks
+#####
+
+# When we are destroying these resources, we need to get:
+# - user_rnic_net_id
+# - user_rnic_subnet_id
+# Which are usually supplied by the frontend TF
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
+resource "openstack_networking_port_v2" "rnic" {
+  name      = "{{ cluster_name }}-{{ cluster_type }}-rnic"
+  network_id     = "{{ user_rnic_net_id }}"
+  admin_state_up = "true"
+  binding {
+    vnic_type = "direct"
+  }
+  fixed_ip {
+    subnet_id = "{{ user_rnic_subnet_id }}"
+  }
+  port_security_enabled = "false"
+  # don't overrite os-vif adding chosen PCI device
+  lifecycle {
+    ignore_changes = [
+      binding,
+    ]
+  }
+}
+{% endif %}
+
+##
+# This block brings up a Ctrl network interface
+#
+data "openstack_networking_network_v2" "ctrlnet" {
+  tags = [ "ctrl", "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}" ]
+}
+
+data "openstack_networking_subnet_v2" "ctrlsub" {
+  tags = [ "ctrl", "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}" ]
+}
+
+resource "openstack_networking_port_v2" "ctrl" {
+  name      = "{{ cluster_name }}-{{ cluster_type }}-ctrl"
+  network_id     = data.openstack_networking_network_v2.ctrlnet.id
+  admin_state_up = "true"
+  fixed_ip {
+    subnet_id = data.openstack_networking_subnet_v2.ctrlsub.id
+  }
+  port_security_enabled = "true"
+  security_group_ids = [ openstack_networking_secgroup_v2.poplar_secgroup.id, data.openstack_networking_secgroup_v2.vipu_secgroup.id ]
 }
 
 ##
-# Create an user RNIC network
+# This block brings up the storage network interface
 #
-resource "openstack_networking_network_v2" "user_rnic_net" {
-  name       = "{{ cluster_name }}-{{cluster_id}}-rnic"
-  mtu        = 1500
-  dns_domain = "{{cluster_name}}.{{dns_base}}"
-  # avoid connection tracking in ovn
-  port_security_enabled = false
-  tags       = [ "user-rnic", "{{cluster_id}}", "{{cluster_name}}", "{{appliance_user}}" ]
-  segments {
-    physical_network = var.rnic_physnet
-    network_type     = "vlan"
+data "openstack_networking_network_v2" "stornet" {
+  tags = [ "storage", "{{ storage_network_name | default('azimuth-vpod-common-storage') }}" ]
+}
+
+data "openstack_networking_subnet_v2" "storsub" {
+  tags = [ "storage", "{{ storage_network_name | default('azimuth-vpod-common-storage') }}" ]
+}
+
+resource "openstack_networking_port_v2" "stor" {
+  name      = "{{ cluster_name }}-{{ cluster_type }}-stor"
+  network_id     = data.openstack_networking_network_v2.stornet.id
+  admin_state_up = "true"
+  fixed_ip {
+    subnet_id = data.openstack_networking_subnet_v2.storsub.id
+  }
+  port_security_enabled = "false"
+  #port_security_enabled = "true"
+  #security_group_ids = [ openstack_networking_secgroup_v2.cluster_secgroup.id ]
+}
+
+
+##
+# This block allocates a public floating IP to the appliance
+#
+resource "openstack_networking_floatingip_v2" "app-fip" {
+  pool = "external"
+  port_id = "${openstack_networking_port_v2.ctrl.id}"
+}
+
+
+#####
+##### Cluster nodes
+#####
+
+##
+# Select image based on name and tag
+data "openstack_images_image_v2" "image" {
+  name = "{{ image_name }}"
+  tag =  "{{ image_tag }}"
+}
+
+resource "openstack_compute_instance_v2" "cluster_server" {
+  name      = "{{ cluster_name }}"
+
+  flavor_id = "{{ cluster_flavor }}"
+
+  user_data = <<-EOF
+    #cloud-config
+    mounts:
+      - [ ephemeral0, /localdata, auto, "defaults,nofail" ]
+    write_files:
+      - path: /etc/systemd/network/05-ctrl.network
+        content: |
+          [Match]
+          MACAddress=${openstack_networking_port_v2.ctrl.mac_address}
+          [Network]
+          DHCP=yes
+          [DHCPv4]
+          UseDNS=yes
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
+      - path: /etc/systemd/network/06-rnic.network
+        content: |
+          [Match]
+          MACAddress=${openstack_networking_port_v2.rnic.mac_address}
+          [Network]
+          DHCP=yes
+          [DHCPv4]
+          UseDNS=false
+{% endif %}
+      - path: /etc/systemd/network/07-stor.network
+        content: |
+          [Match]
+          MACAddress=${openstack_networking_port_v2.stor.mac_address}
+          [Network]
+          DHCP=yes
+          [DHCPv4]
+          UseDNS=false
+      - path: /etc/motd
+        content: |
+           ##############################################################################
+           #                                                                            #
+           #  This appliance, and the infrastructure that supports it, is provided and  #
+           #  maintained by the Cloud Development Team. IT have no responsibility for   #
+           #  this system, and will not be able to help you.                            #
+           #                                                                            #
+           #  If you have any questions, concerns, or suggestions for enhancement,      #
+           #  please contact:                                                           #
+           #                                                                            #
+           #    Slack: #help-gbnwp-cl1                                                  #
+           #    Email: cloud-development@graphcore.ai                                   #
+           #                                                                            #
+           ##############################################################################
+      - path: /etc/ceph/cephfspublic.secret
+        owner: root:root
+        permissions: 0600
+        content: |
+           {{cephfs_public_secret}}
+{% if additional_mounts is defined and additional_mounts %}
+      - path: /etc/ansible-init/includes/fstab.addendum
+        content: |
+{% for mnt in additional_mounts %}
+           {{mnt.fs_spec}} {{mnt.fs_file}} {{mnt.fs_vfstype}} {{mnt.fs_mntops}} {{mnt.fs_freq}} {{mnt.fs_passno}}
+{% endfor %}
+{% endif %}
+      - path: /etc/rinetd.conf
+        content: |
+           127.0.0.1 8090 {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['ctrl_net_ip'] }} {{ vipu_container_user_port }}
+    runcmd:
+      - [ systemctl, restart, systemd-networkd]
+      - [ systemctl, restart, rinetd ]
+  EOF
+
+  metadata = {
+    zenith_volume_id = "${openstack_blockstorage_volume_v3.zenith_volume.id}"
+    data_volume_id = "${openstack_blockstorage_volume_v3.data_volume.id}"
+    zenith_registrar_url = "{{ zenith_registrar_url }}"
+    zenith_registrar_token_webconsole = "{{ zenith_token_webconsole }}"
+    zenith_registrar_token_monitoring = "{{ zenith_token_monitoring }}"
+    zenith_fqdn_webconsole = "{{ zenith_fqdn_webconsole }}"
+    zenith_fqdn_monitoring = "{{ zenith_fqdn_monitoring }}"
+    zenith_sshd_host = "{{ zenith_sshd_host }}"
+    zenith_sshd_port = "{{ zenith_sshd_port }}"
+    azimuth_cloud_name = "notused"
+    azimuth_user_name = "{{appliance_user}}"
+    azimuth_user_id = "${data.openstack_identity_auth_scope_v3.scope.user_id}"
+    azimuth_project_name = "${data.openstack_identity_auth_scope_v3.scope.project_name}"
+    azimuth_project_id = "${data.openstack_identity_auth_scope_v3.scope.project_id}"
+    guacamole_user = "ipuuser"
+    appliance_pub_ip = "${openstack_networking_floatingip_v2.app-fip.address}"
+    allocation_name = "{{ allocation_name }}"
+    allocation_size = "{{ allocation_size }}"
+    partition_name  = "{{ user_partition  }}"
+    vipu_ipaddr     = "127.0.0.1"
+    vipu_port       = "8090"
+    ldap_auth_token = "{{ ldap_auth_token }}"
+    nethome_secret  = "{{ cephfs_nethome_secret | b64encode }}"
+  }
+
+  block_device {
+{% if cluster_previous_image is defined %}
+    uuid  = "{{ cluster_previous_image }}"
+{% else %}
+    uuid  = "${data.openstack_images_image_v2.image.id}"
+{% endif %}
+    source_type           = "image"
+    volume_size           = 100
+    boot_index            = 0
+    destination_type      = "volume"
+    delete_on_termination = true
+  }
+
+{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
+  network {
+    port = "${openstack_networking_port_v2.rnic.id}"
+  }
+{% endif %}
+
+  network {
+    port = "${openstack_networking_port_v2.ctrl.id}"
+  }
+
+  network {
+    port = "${openstack_networking_port_v2.stor.id}"
   }
 }
 
-resource "openstack_networking_subnet_v2" "user_rnic_subnet" {
-  name       = "{{ cluster_name }}-{{cluster_id}}-rnic-net"
-  network_id = openstack_networking_network_v2.user_rnic_net.id
-  cidr       = "10.5.0.0/16"
-  ip_version = 4
-  tags       = [ "user-rnic", "{{cluster_id}}", "{{cluster_name}}", "{{appliance_user}}" ]
-  no_gateway = true
-  allocation_pool {
-  start = "10.5.{{cidr_hint}}.100"
-  end   = "10.5.{{cidr_hint}}.199"
-  }
+resource "openstack_compute_volume_attach_v2" "zenith_volume" {
+  instance_id = "${openstack_compute_instance_v2.cluster_server.id}"
+  volume_id   = "${openstack_blockstorage_volume_v3.zenith_volume.id}"
 }
 
-##
-# RBAC the user RNIC network into the user's project
-resource "openstack_networking_rbac_policy_v2" "rbac_policy_rnic_user" {
-  action        = "access_as_shared"
-  object_id     = "${openstack_networking_network_v2.user_rnic_net.id}"
-  object_type   = "network"
-  target_tenant = "{{ appliance_project }}"
+resource "openstack_compute_volume_attach_v2" "data_volume" {
+  instance_id = "${openstack_compute_instance_v2.cluster_server.id}"
+  volume_id   = "${openstack_blockstorage_volume_v3.data_volume.id}"
 }
-
-##
-# Shuffle - Assign IPUMs to project
-module "ipum-user-allocs" {
-  source     = "git::ssh://git@gitlab.com/openstack-vipu/terraform-modules/vpod-ironic-ipums.git?ref=SYSOP-1000"
-  vpod_name  = "{{cluster_name}}"
-  cluster_name = "{{gc_cloud}}"
-  rnic_network_id = "${openstack_networking_network_v2.user_rnic_net.id}"
-  assigned_ipums = {{assigned_ipums_list | tojson }}
-  ipum_yaml    = "ipums.yml"
-  az = "{{gc_cloud | replace('_','-')}}-general"
-  depends_on = [
-   openstack_networking_subnet_v2.user_rnic_subnet
-  ]
-}
-

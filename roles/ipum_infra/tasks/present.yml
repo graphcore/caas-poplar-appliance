@@ -1,0 +1,180 @@
+# This task list configures user-defined partitions, Azimuth-defined allocation
+# and IPUMs when the Poplar Appliance is created (terraform_state == present)
+- name: Build the appliance when terraform_state is present
+  block:
+    # This creation can fail because:
+    # 1. There aren't enough free IPUMs
+    # 2. The allocation already exists
+    - name: Create the allocation of requested size
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
+      register: allocation_result
+  rescue:
+    - name: Fail if there simply is not enough space
+      ansible.builtin.fail:
+        msg: No allocations of size {{allocation_size}} available
+      when: '"no free allocation" in allocation_result.stderr'
+
+    # So here we must have an allocation, which per SYSOP-1090 we must
+    # delete. But the allocation might have partitions, so we need to
+    # list and delete those
+    # - name: List partitions in our allocation
+    #   ansible.builtin.command:
+    #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
+    #   register: vipu_partition_out
+    #   ignore_errors: true
+    #
+    # - name: Partition removal block
+    #   block:
+    #     - name: Convert partition_out to list
+    #       ansible.builtin.set_fact:
+    #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+    #
+    #     - name: Remove partitions in our allocation
+    #       ansible.builtin.command:
+    #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove partition {{ part_var }} --force
+    #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+    #       loop_control:
+    #         loop_var: part_var
+    #       register: partition_remove_out
+    #   when: vipu_partition_out.rc == 0
+
+    # So if we've got here, there is an existing allocation with the same name,
+    # AND there is sufficient space for another (this is a dubious test because
+    # we're going to replace the existing allocation).
+    - name: Remove OLD allocation
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name}}
+      register: allocation_remove_old_out
+
+      #TODO: Between these two tasks we need to do something special. The old allocation is removed and the new
+      #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing
+      #      two container definitions, but with the same port mappings. Options: delay sufficient time for the
+      #      loop to have triggered, and the old allocation definition is removed from docker-compose.yml
+    # - name: TEMP - pause here to ensure our loop detects the allocation removal
+    #   ansible.builtin.pause:
+    #     minutes: 2
+    #
+    - name: Create the NEW allocation of requested size
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
+      register: allocation_result
+  always:
+    - name: Fail if the allocation wasn't possible
+      ansible.builtin.fail:
+        msg: No allocations of size {{allocation_size}} available
+      when: '"no free allocation" in allocation_result.stderr'
+
+    - name: Copy clouds.yaml file
+      ansible.builtin.copy:
+        decrypt: yes
+        src: "{{playbook_dir}}/files/clouds-{{gc_tenancy | default(gc_cloud)}}.yaml"
+        dest: "/etc/openstack/clouds.yaml"
+        mode: 0666
+
+    - name: Get ID of common_ctrl network
+      openstack.cloud.networks_info:
+        cloud: openstack
+        name: "{{ control_network_name | default('azimuth-vpod-common-ctrl') }}"
+      register: ctrl_result
+      environment:
+        OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+
+    - name: Debug ctrl_network result
+      ansible.builtin.debug:
+        msg: "Ctrl network output {{ ctrl_result }}"
+
+    # Ensure azimuth-vpod-common-ctrl RBAC policy exists
+    - name: Create a new network RBAC policy
+      openstack.cloud.neutron_rbac_policy:
+        object_id: "{{ ctrl_result.openstack_networks[0].id}}"
+        object_type: "network"
+        target_project_id: "{{appliance_project}}"
+        project_id: "{{ctrl_result.openstack_networks[0].project_id}}"
+        cloud: openstack
+        action: "access_as_shared"
+        state: present
+      register: rbac_result
+      environment:
+        OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+
+    - name: Get ID of common_storage network
+      openstack.cloud.networks_info:
+        cloud: openstack
+        name: "{{ storage_network_name | default('azimuth-vpod-common-storage') }}"
+      register: storage_result
+      environment:
+        OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+
+    # Ensure azimuth-vpod-common-storage RBAC policy exists
+    - name: Create a new network RBAC policy
+      openstack.cloud.neutron_rbac_policy:
+        object_id: "{{ storage_result.openstack_networks[0].id}}"
+        object_type: "network"
+        target_project_id: "{{appliance_project}}"
+        project_id: "{{storage_result.openstack_networks[0].project_id}}"
+        cloud: openstack
+        action: "access_as_shared"
+        state: present
+      environment:
+        OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+
+    - name: Get allocation properties
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 get allocation {{allocation_name}}
+      register: assigned_alloc_list
+
+    - name: List assigned IPUMs cos we need it for the truffle-shuffle
+      ansible.builtin.set_fact:
+        assigned_ipums_list: "{{ assigned_alloc_list.stdout | from_json |  moreati.jq.jq('.allocation.spec.agent_ids') }}"
+
+    - name: Shuffle IPUMs
+      ansible.builtin.include_role:
+        name: ipum_infra
+        tasks_from: truffleshuffle.yml
+
+    - name: Create partition if user requested, here we need to act on the vipu-container
+      block:
+        # In some cases (for example in the re-execution of a failed appliance)
+        # we have a container already running, and already with a partition configured.
+        # Thus, in that situation, we first need to remove the partition and then build
+        # the new one.
+        # - name: List partitions in our allocation
+        #   ansible.builtin.command:
+        #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
+        #   register: vipu_partition_out
+        #   ignore_errors: true
+        #
+        # - name: Partition removal block
+        #   block:
+        #     - name: Convert partition_out to list
+        #       ansible.builtin.set_fact:
+        #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+        #
+        #     - name: Remove partitions in our allocation
+        #       ansible.builtin.command:
+        #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
+        #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+        #       loop_control:
+        #         loop_var: part_var
+        #       register: partition_remove_out
+        #   when: vipu_partition_out.rc == 0
+
+        - name: Create partition
+          ansible.builtin.command:
+            cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
+          register: vipu_part_mk
+          ignore_errors: true
+
+        - name: Did we create the requested partition?
+          ansible.builtin.fail:
+            msg: Creating reconfigurable partition size {{allocation_size}} in {{allocation_name}}
+          when:
+            - vipu_part_mk.rc != 0
+      when:
+        - '"Single reconfigurable partition" in partition_choice'
+
+    - name: Remove clouds.yaml file so next task runs as the Azimuth user
+      ansible.builtin.file:
+        state: absent
+        path: "/etc/openstack/clouds.yaml"

@@ -2,6 +2,15 @@
   ansible.builtin.debug:
     msg: "Building appliance {{cluster_name}}"
 
+- name: Include the vars we need
+  ansible.builtin.include_vars:
+    file: "{{ var_inc_var }}"
+  loop:
+    - "{{playbook_dir}}/group_vars/{{gc_tenancy | default(gc_cloud)}}.yaml"
+    - "{{playbook_dir}}/group_vars/ipums.yaml"
+  loop_control:
+    loop_var: var_inc_var
+
 - name: Get openstack user name
   ansible.builtin.shell:
     cmd: openstack user show "$(openstack token issue -f value -c user_id)" -f value -c name
@@ -31,21 +40,24 @@
 
 - name: Set allocation name
   ansible.builtin.set_fact:
-    allocation_name: "{{appliance_user}}-{{cluster_name}}"
+    allocation_name: "{{cluster_id}}-{{appliance_user}}-{{cluster_name}}"
 
 - name: Generate partition name
   ansible.builtin.set_fact:
     user_partition: "{{ ('Single reconfigurable partition' in partition_choice) | ternary(allocation_name ~ '-reconfig', 'N/A')  }}"
 
+- name: Generate user port number for instance-specific V-IPU container mapped to TCP/8090
+  ansible.builtin.set_fact:
+    vipu_container_user_port: "{{ ((cluster_id | int * 10) % 32768) + azimuth_vipu_base_port | int }}"
+
+- name: Generate admin port number for instance-specific V-IPU container mapped to TCP/8091
+  ansible.builtin.set_fact:
+    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 1) % 32768) + azimuth_vipu_base_port | int }}"
+
+- name: Generate Prometheus port number for instance-specific V-IPU container mapped to TCP/2113
+  ansible.builtin.set_fact:
+    vipu_container_exporter_port: "{{ (((cluster_id | int * 10) + 2) % 32768) + azimuth_vipu_base_port | int }}"
+
 - name: Define the terraform state
   ansible.builtin.set_fact:
     terraform_state: "{{ cluster_state | default('present') }}"
-
-- name: Include the vars we need
-  ansible.builtin.include_vars:
-    file: "{{ var_inc_var }}"
-  loop:
-    - "{{playbook_dir}}/group_vars/{{gc_cloud}}.yaml"
-    - "{{playbook_dir}}/group_vars/ipums.yaml"
-  loop_control:
-    loop_var: var_inc_var

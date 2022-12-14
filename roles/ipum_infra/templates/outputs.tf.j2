@@ -1,0 +1,18 @@
+output "user_rnic_net_id" {
+  description = "OpenStack ID for the user's rnic network"
+  value       = "${openstack_networking_network_v2.user_rnic_net.id}"
+}
+
+output "user_rnic_subnet_id" {
+  description = "OpenStack ID for the user's rnic subnet"
+  value       = "${openstack_networking_subnet_v2.user_rnic_subnet.id}"
+}
+
+data "openstack_networking_network_v2" "common_ctrl_net" {
+  tags = [ "ctrl", "common"]
+}
+
+output "common_ctrl_net_id" {
+  description = "OpenStack ID for the common ctrl network"
+  value       = "${data.openstack_networking_network_v2.common_ctrl_net.id}"
+}

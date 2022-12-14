@@ -1,0 +1,96 @@
+# This file contains parameters common to all gbnwp-cl1 dev1:
+#   - projects/tenancies
+#   - vpods
+
+# For deployments that occupy part of a cloud we use the tenancy name to define
+# the properties. Apart from the IPUM list, which is de facto part of the
+# containing cloud. In the case of dev1 the containing cloud is cl1
+#gc_tenancy: "gbnwp_dev1"
+
+control_network_name: "azimuth-dev1-vpod-common-ctrl"
+storage_network_name: "azimuth-dev1-vpod-common-storage"
+
+##
+# Use the following VIPU servers
+vipu_ver: "1.18.0"
+azimuth_vipu_base_port: 11729
+azimuth_ext_ip_prefix: "10.129.110.111"
+vipu_servers:
+  default:
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
+    vipu_port: "8090"
+  sysopssandpit:
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
+    vipu_port: "8090"
+  wonderland:
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
+    vipu_port: "8090"
+  alderaan:
+    name: "azimuth-dev1-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
+    floating_ip: "10.129.110.238"
+    ctrl_net_ip: "10.3.48.102"
+    vipu_port: "8090"
+
+dns_base: "openstack.graphcore.ai."
+
+##
+# Required by vpod-nets, value doesn't matter in our context because we're not
+# routing the RNIC networks.
+cidr_hint: "25"
+
+##
+# LDAP access
+ldap_uri: "ldap://gcgbnwpvldapslave001.it.graphcore.ai ldap://gbbrsvldapslave002.it.graphcore.ai ldap://nooslvldapslave001.it.graphcore.ai ldap://gbbrsvldapmaster001.it.graphcore.ai"
+ldap_base: "dc=bris,dc=graphcore,dc=ai"
+ldap_base_users: "ou=People,dc=bris,dc=graphcore,dc=ai"
+ldap_user: "uid=svcsysops-ldapbind"
+ldap_binddn: "uid=svcsysops-ldapbind,ou=People,dc=bris,dc=graphcore,dc=ai"
+
+
+##
+# Additional mounts for Poplar VM
+additional_mounts:
+  # - name: ceph-nethome
+  #   fs_spec: "10.194.5.101:6789,10.194.5.104:6789,10.194.5.105:6789:/volumes/_nogroup/7d727547-75e3-424a-8974-ab2d33a7f817/d7541e4a-d6e6-46ab-a627-9f957f7dc78c"
+  #   fs_file: "/nethome"
+  #   fs_vfstype: "ceph"
+  #   fs_mntops: "name=globalnethome,secretfile=/etc/ceph/cephfsnethome.secret,_netdev"
+  #   fs_freq: "0"
+  #   fs_passno: "0"
+  - name: ceph-public
+    fs_spec: "10.194.5.101:6789,10.194.5.104:6789,10.194.5.105:6789:/volumes/_nogroup/120870d6-360f-4468-b457-e8b27e903f99/502e26fa-eae5-489e-b102-7f347215df74"
+    fs_file: "/mnt/public"
+    fs_vfstype: "ceph"
+    fs_mntops: "name=globalpublicro,secretfile=/etc/ceph/cephfspublic.secret,_netdev"
+    fs_freq: "0"
+    fs_passno: "0"
+  - name: pure-ai-scratch
+    fs_spec: "gbnwp-pure001-pod.ipu.graphcore.ai:/scratch_ai-datasets"
+    fs_file: "/scratch_ai-datasets"
+    fs_vfstype: "nfs"
+    fs_mntops: "rw,relatime,vers=3,hard,proto=tcp,nconnect=16,timeo=600,retrans=2,sec=sys,mountvers=3,mountport=2049,mountproto=udp,rsize=524288,wsize=524288,namlen=255,comment=cloudconfig"
+    fs_freq: "0"
+    fs_passno: "0"
+
+cephfs_nethome_secret: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  62393262303436303839613366363332663331653730303562363832326634323238376364396637
+  3234316432343836616139353161643363643432303864380a396363633438623164386233373132
+  31393166336636316636653365326463666635643562353830323062666639643230376538613732
+  6335653862323665320a356333393933316631336138666330356561353439343734646462333266
+  62643561333666613461613532326332653366363836356238656264396437386262343038393861
+  3265316539343061616465663236613038646266383061366162
+cephfs_public_secret: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  38383035333139323539333137313636373761343434303762376365653538653833383263383031
+  6262393835353533346633363736616365363062316364360a353763316466373538383934343861
+  36633263343464653735623365386331306438656434656563653433623963363162393863386430
+  6264333131613565650a626432333864653235663638643763643737306462373163383731313439
+  35643262323031653162396430656534343163656166343134636162323732633065633037303665
+  3363313338656136336430616463356563643865653465373332
