@@ -3,27 +3,27 @@
 
 # This is flakey, if allocation_name isn't known it throws an error so we
 # check the error condition before trying to execute the following block.
-# - name: List partitions in our allocation (only)
-#   ansible.builtin.command:
-#     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
-#   register: vipu_partition_out
-#   ignore_errors: true
+- name: List partitions in our allocation (only)
+  ansible.builtin.command:
+    cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
+  register: vipu_partition_out
+  ignore_errors: true
 
-# - name: Partition removal block
-#   block:
-#     - name: Convert partition_out to list
-#       ansible.builtin.set_fact:
-#         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
-#
-#     - name: Remove partitions in our allocation
-#       ansible.builtin.command:
-#         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove partition {{ part_var }} --force
-#       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
-#       loop_control:
-#         loop_var: part_var
-#       register: partition_remove_out
-#   # End block
-#   when: vipu_partition_out.rc == 0
+- name: Partition removal block
+  block:
+    - name: Convert partition_out to list
+      ansible.builtin.set_fact:
+        vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+
+    - name: Remove partitions in our allocation
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
+      loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
+      loop_control:
+        loop_var: part_var
+      register: partition_remove_out
+  # End block
+  when: vipu_partition_out.rc == 0
 
 - name: List allocation - the return code shows if the expected alloc exists
   ansible.builtin.command:

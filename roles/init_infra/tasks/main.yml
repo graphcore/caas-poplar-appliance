@@ -46,13 +46,17 @@
   ansible.builtin.set_fact:
     user_partition: "{{ ('Single reconfigurable partition' in partition_choice) | ternary(allocation_name ~ '-reconfig', 'N/A')  }}"
 
-- name: Generate user port number for instance-specific V-IPU container
+- name: Generate user port number for instance-specific V-IPU container mapped to TCP/8090
   ansible.builtin.set_fact:
-    vipu_container_user_port: "{{ ((cluster_id | int * 10) % 65536) + azimuth_vipu_base_port | int }}"
+    vipu_container_user_port: "{{ ((cluster_id | int * 10) % 32768) + azimuth_vipu_base_port | int }}"
 
-- name: Generate admin port number for instance-specific V-IPU container
+- name: Generate admin port number for instance-specific V-IPU container mapped to TCP/8091
   ansible.builtin.set_fact:
-    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 1) % 65536) + azimuth_vipu_base_port | int }}"
+    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 1) % 32768) + azimuth_vipu_base_port | int }}"
+
+- name: Generate Prometheus port number for instance-specific V-IPU container mapped to TCP/2113
+  ansible.builtin.set_fact:
+    vipu_container_admin_port: "{{ (((cluster_id | int * 10) + 2) % 32768) + azimuth_vipu_base_port | int }}"
 
 - name: Define the terraform state
   ansible.builtin.set_fact:

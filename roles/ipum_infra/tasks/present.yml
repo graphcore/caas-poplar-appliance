@@ -51,10 +51,10 @@
       #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing
       #      two container definitions, but with the same port mappings. Options: delay sufficient time for the
       #      loop to have triggered, and the old allocation definition is removed from docker-compose.yml
-    - name: TEMP - pause here to ensure our loop detects the allocation removal
-      ansible.builtin.pause:
-        minutes: 2
-
+    # - name: TEMP - pause here to ensure our loop detects the allocation removal
+    #   ansible.builtin.pause:
+    #     minutes: 2
+    #
     - name: Create the NEW allocation of requested size
       ansible.builtin.command:
         cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
