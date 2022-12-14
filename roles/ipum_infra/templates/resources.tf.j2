@@ -91,6 +91,7 @@ resource "openstack_networking_rbac_policy_v2" "rbac_policy_rnic_user" {
   target_tenant = "{{ appliance_project }}"
 }
 
+{% if allocation_size > 0 %}
 ##
 # Shuffle - Assign IPUMs to project
 module "ipum-user-allocs" {

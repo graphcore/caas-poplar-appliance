@@ -137,7 +137,6 @@
       ansible.builtin.include_role:
         name: ipum_infra
         tasks_from: truffleshuffle.yml
-      when: allocation_size | int > 0
 
     - name: Create partition if user requested, here we need to act on the vipu-container
       block:
