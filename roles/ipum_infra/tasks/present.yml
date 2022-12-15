@@ -1,67 +1,44 @@
-# This task list configures user-defined partitions, Azimuth-defined allocation
-# and IPUMs when the Poplar Appliance is created (terraform_state == present)
+# This task list is executed when cluster_state = present, which happens during
+# new appliance build AND during appliance update. Steps taken are:
+#
+# 1. Remove an existing user allocation (with same name as this appliance)
+#    This is to handle the update case
+# 2. We then create the allocation as requested by the user (either new build
+#    or update), and we fail if the allocation creation isn't possible due to
+#    lack of space. This spins-up the containerized V-IPU for the instance.
+# 3. From the allocation properties, we retrieve the IPUM list and shuffle the
+#    IPUMs, which requires execution of terraform.
+# 4. Create partition, if user requested, in the instance cV-IPU
+
+- name: Delete existing user allocation (to free space)
+  block:
+    - name: Delete allocation from V-IPU prime
+      ansible.builtin.command:
+        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name}}
+  rescue:
+    - name: Inform user
+      ansible.builtin.debug:
+        msg: "No existing allocation to remove"
+
 - name: Build the appliance when terraform_state is present
   block:
-    # This creation can fail because:
-    # 1. There aren't enough free IPUMs
-    # 2. The allocation already exists
+    # This creation can fail only because there aren't enough free IPUMs
+    # (failure because of existing allocation is prevented by block above)
     - name: Create the allocation of requested size
       ansible.builtin.command:
         cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
       when: allocation_size | int > 0
       register: allocation_result
   rescue:
-    - name: Fail if there simply is not enough space
+    - name: Abort if there simply is not enough space
       ansible.builtin.fail:
         msg: No allocations of size {{allocation_size}} available
       when: '"no free allocation" in allocation_result.stderr'
 
-    # So here we must have an allocation, which per SYSOP-1090 we must
-    # delete. But the allocation might have partitions, so we need to
-    # list and delete those
-    # - name: List partitions in our allocation
-    #   ansible.builtin.command:
-    #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 list partitions --allocation {{allocation_name}} --showjson
-    #   register: vipu_partition_out
-    #   ignore_errors: true
-    #
-    # - name: Partition removal block
-    #   block:
-    #     - name: Convert partition_out to list
-    #       ansible.builtin.set_fact:
-    #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
-    #
-    #     - name: Remove partitions in our allocation
-    #       ansible.builtin.command:
-    #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove partition {{ part_var }} --force
-    #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
-    #       loop_control:
-    #         loop_var: part_var
-    #       register: partition_remove_out
-    #   when: vipu_partition_out.rc == 0
-
-    # So if we've got here, there is an existing allocation with the same name,
-    # AND there is sufficient space for another (this is a dubious test because
-    # we're going to replace the existing allocation).
-    - name: Remove OLD allocation
-      ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 remove allocation {{allocation_name}}
-      register: allocation_remove_old_out
-
-      #TODO: Between these two tasks we need to do something special. The old allocation is removed and the new
-      #      added _before_ the V-IPU monitoring loop triggers. Thus, we end-up with a docker file containing
-      #      two container definitions, but with the same port mappings. Options: delay sufficient time for the
-      #      loop to have triggered, and the old allocation definition is removed from docker-compose.yml
-    # - name: TEMP - pause here to ensure our loop detects the allocation removal
-    #   ansible.builtin.pause:
-    #     minutes: 2
-    #
-    - name: Create the NEW allocation of requested size
-      ansible.builtin.command:
-        cmd: vipu-admin{{vipu_ver}} --showjson -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P 8091 create allocation {{allocation_name}} --size {{allocation_size}}
-      register: allocation_result
+      #TODO: Between these two tasks we might need to do something special if
+      #      the syslog monitoring of the V-IPU message causes delay.
   always:
-    - name: Fail if the allocation wasn't possible
+    - name: Fail if the allocation wasn't possible, skips "always" steps
       ansible.builtin.fail:
         msg: No allocations of size {{allocation_size}} available
       when:
@@ -133,39 +110,14 @@
         assigned_ipums_list: "{{ assigned_alloc_list.stdout | from_json |  moreati.jq.jq('.allocation.spec.agent_ids') }}"
       when: allocation_size | int > 0
 
-    - name: Shuffle IPUMs
+    - name: Shuffle IPUMs, need to do this even in the case of allocation_size=0
       ansible.builtin.include_role:
         name: ipum_infra
         tasks_from: truffleshuffle.yml
 
-    - name: Create partition if user requested, here we need to act on the vipu-container
+    - name: Create partition if user requested
       block:
-        # In some cases (for example in the re-execution of a failed appliance)
-        # we have a container already running, and already with a partition configured.
-        # Thus, in that situation, we first need to remove the partition and then build
-        # the new one.
-        # - name: List partitions in our allocation
-        #   ansible.builtin.command:
-        #     cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} list partitions --allocation {{allocation_name}} --showjson
-        #   register: vipu_partition_out
-        #   ignore_errors: true
-        #
-        # - name: Partition removal block
-        #   block:
-        #     - name: Convert partition_out to list
-        #       ansible.builtin.set_fact:
-        #         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
-        #
-        #     - name: Remove partitions in our allocation
-        #       ansible.builtin.command:
-        #         cmd: vipu-admin{{vipu_ver}}  -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} remove partition {{ part_var }} --force
-        #       loop: "{{ vipu_partition_list if vipu_partition_list else [] }}"
-        #       loop_control:
-        #         loop_var: part_var
-        #       register: partition_remove_out
-        #   when: vipu_partition_out.rc == 0
-
-        - name: Create partition
+        - name: Create partition, here we need to act on the vipu-container
           ansible.builtin.command:
             cmd: vipu-admin{{vipu_ver}} -H {{ vipu_servers['default' if '@' in appliance_tenancy else appliance_tenancy]['floating_ip'] }} -P {{ vipu_container_admin_port }} --showjson create partition {{user_partition}} --size {{allocation_size}} --allocation {{allocation_name}} --reconfigurable
           register: vipu_part_mk
