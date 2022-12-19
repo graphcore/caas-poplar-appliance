@@ -62,7 +62,7 @@ resource "openstack_blockstorage_volume_v3" "data_volume" {
 # - user_rnic_net_id
 # - user_rnic_subnet_id
 # Which are usually supplied by the frontend TF
-{% if user_rnic_net_id is defined and user_subrnic_net_id is defined %}
+{% if user_rnic_net_id is defined and user_rnic_subnet_id is defined %}
 resource "openstack_networking_port_v2" "rnic" {
   name      = "{{ cluster_name }}-{{ cluster_type }}-rnic"
   network_id     = "{{ user_rnic_net_id }}"
@@ -167,7 +167,7 @@ resource "openstack_compute_instance_v2" "cluster_server" {
           DHCP=yes
           [DHCPv4]
           UseDNS=yes
-{% if user_rnic_net_id is defined and user_rnic_net_id is defined %}
+{% if user_rnic_net_id is defined and user_rnic_subnet_id is defined %}
       - path: /etc/systemd/network/06-rnic.network
         content: |
           [Match]
