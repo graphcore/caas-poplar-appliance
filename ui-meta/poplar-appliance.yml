@@ -78,12 +78,19 @@ usage_template: |-
   The following environment variables have been set in the appliance:
 
   ```
-  GC_ALLOCATION_NAME={{cluster.outputs.allocation_name}}
-  GC_ALLOCATION_SIZE={{cluster.outputs.allocation_size}}
   GC_PUBLIC_IP={{cluster.outputs.cluster_access_ip | default("[cluster ip]") }}
+  GC_ALLOCATION_SIZE={{cluster.outputs.allocation_size}}
+  {% if cluster.outputs.allocation_size > 0 %}
+  GC_ALLOCATION_NAME={{cluster.outputs.allocation_name}}
   IPUOF_VIPU_API_PARTITION_ID={{cluster.outputs.ipuof_vipu_api_partition_id}}
   IPUOF_VIPU_API_HOST={{cluster.outputs.ipuof_vipu_api_host}}
+  {% endif %}
   ```
+
+  {% if allocation_size == 0 %}
+  You may add IPUs to your appliance by selecting the update button at the top of this
+  pane. The IPUs will be added, and this VM will be preserved in place.
+  {% endif %}
 
   A data volume is mounted at `/data`, and content stored there will persist for the lifetime
   of the appliance. Other parts of the filesystem may be affected during a patch operation,
