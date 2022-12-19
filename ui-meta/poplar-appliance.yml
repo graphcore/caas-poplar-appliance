@@ -84,10 +84,10 @@ usage_template: |-
   GC_ALLOCATION_NAME={{cluster.outputs.allocation_name}}
   IPUOF_VIPU_API_PARTITION_ID={{cluster.outputs.ipuof_vipu_api_partition_id}}
   IPUOF_VIPU_API_HOST={{cluster.outputs.ipuof_vipu_api_host}}
-  {%- else -%}
+  ```{%- else -%}
   # No allocation or partitions have been created
-  {%- endif %}
-  ```
+  ```{%- endif %}
+
 
   {% if cluster.outputs.allocation_size == 0 -%}
   You may add IPUs to your appliance by selecting the update button at the top of this
