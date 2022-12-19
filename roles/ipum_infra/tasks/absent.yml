@@ -41,6 +41,7 @@
     - name: List assigned IPUMs cos we need it for the truffle-shuffle
       ansible.builtin.set_fact:
         assigned_ipums_list: "{{ vipu_alloc_list.stdout | from_json |  moreati.jq.jq('.allocation.spec.agent_ids') }}"
+      when: vipu_alloc_list.rc == 0
 
     - name: Remove allocation
       ansible.builtin.command:
@@ -66,5 +67,4 @@
         path: "/etc/openstack/clouds.yaml"
         # End block cleaning up allocations
   when:
-    - vipu_alloc_list.rc == 0
     - allocation_size | int > 0
