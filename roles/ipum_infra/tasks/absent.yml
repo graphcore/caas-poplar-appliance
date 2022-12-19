@@ -15,6 +15,7 @@
     - name: Convert partition_out to list
       ansible.builtin.set_fact:
         vipu_partition_list: "{{ vipu_partition_out.stdout | from_json | community.general.json_query('partitions[*].id') | list }}"
+      when: vipu_partition_out.rc == 0
 
     - name: Remove partitions in our allocation
       ansible.builtin.command:
@@ -23,9 +24,9 @@
       loop_control:
         loop_var: part_var
       register: partition_remove_out
+      when: vipu_partition_list is iterable
   # End block
   when:
-    - vipu_partition_out.rc == 0
     - allocation_size | int > 0
 
 - name: List allocation - the return code shows if the expected alloc exists
