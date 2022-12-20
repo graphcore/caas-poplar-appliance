@@ -1,10 +1,25 @@
-# This file contains parameters common to all gbnwp-cl2:
+# This file contains parameters common to all gbnwp-cl1 azimuth:
 #   - projects/tenancies
 #   - vpods
+#
+# For deployments that occupy part of a cloud we use the tenancy name to define
+# the properties. Apart from the IPUM list, which is de facto part of the
+# containing cloud. In the case of dev1 the containing cloud is cl1
+# Thus, we specify two parameters, which are set in the AWX template:
+#
+# {
+#   "gc_cloud": "gbnwp_cl1",
+#   "gc_tenancy": "gbnwp_cl1"
+# }
+
+control_network_name: "azimuth--vpod-common-ctrl"
+storage_network_name: "azimuth--vpod-common-storage"
 
 ##
 # Use the following VIPU servers
 vipu_ver: "1.18.0"
+azimuth_vipu_base_port: 11729
+azimuth_ext_ip_prefix: "10.129.110.107"
 vipu_servers:
   default:
     name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
@@ -46,13 +61,6 @@ ldap_binddn: "uid=svcsysops-ldapbind,ou=People,dc=bris,dc=graphcore,dc=ai"
 ##
 # Additional mounts for Poplar VM
 additional_mounts:
-  # - name: ceph-nethome
-  #   fs_spec: "10.194.5.101:6789,10.194.5.104:6789,10.194.5.105:6789:/volumes/_nogroup/7d727547-75e3-424a-8974-ab2d33a7f817/d7541e4a-d6e6-46ab-a627-9f957f7dc78c"
-  #   fs_file: "/nethome"
-  #   fs_vfstype: "ceph"
-  #   fs_mntops: "name=globalnethome,secretfile=/etc/ceph/cephfsnethome.secret,_netdev"
-  #   fs_freq: "0"
-  #   fs_passno: "0"
   - name: ceph-public
     fs_spec: "10.194.5.101:6789,10.194.5.104:6789,10.194.5.105:6789:/volumes/_nogroup/120870d6-360f-4468-b457-e8b27e903f99/502e26fa-eae5-489e-b102-7f347215df74"
     fs_file: "/mnt/public"
