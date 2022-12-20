@@ -22,15 +22,15 @@ parameters:
     description: |-
       The number of IPUs to be added to allocation.
     kind: choice
-    default: 4
+    default: "4"
     options:
       choices:
-        - 0
-        - 4
-        - 8
-        - 16
-        - 32
-        - 64
+        - "0"
+        - "4"
+        - "8"
+        - "16"
+        - "32"
+        - "64"
     immutable: false
 
   - name: partition_choice
