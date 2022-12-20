@@ -22,7 +22,7 @@ parameters:
     description: |-
       The number of IPUs to be added to allocation.
     kind: choice
-    default: "0"
+    default: "4"
     options:
       choices:
         - "0"
