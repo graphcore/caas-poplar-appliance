@@ -12,8 +12,8 @@
 #   "gc_tenancy": "gbnwp_cl1"
 # }
 
-control_network_name: "azimuth--vpod-common-ctrl"
-storage_network_name: "azimuth--vpod-common-storage"
+control_network_name: "azimuth-vpod-common-ctrl"
+storage_network_name: "azimuth-vpod-common-storage"
 
 ##
 # Use the following VIPU servers
