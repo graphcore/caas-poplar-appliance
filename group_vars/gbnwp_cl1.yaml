@@ -19,7 +19,7 @@ storage_network_name: "azimuth-vpod-common-storage"
 # Use the following VIPU servers
 vipu_ver: "1.18.0"
 azimuth_vipu_base_port: 11729
-azimuth_ext_ip_prefix: "10.129.110.107"
+azimuth_ext_ip_prefix: "10.129.110.131"
 vipu_servers:
   default:
     name: "azimuth-vpod-common-ctrl.gbnwp-cl1.ipu.graphcore.ai"
