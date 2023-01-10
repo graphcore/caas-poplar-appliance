@@ -13,6 +13,7 @@ parameters:
     default: "Ubuntu 20.04"
     options:
       choices:
+        - "Ubuntu 22.04"
         - "Ubuntu 20.04"
         - "Ubuntu 18.04"
     immutable: true
